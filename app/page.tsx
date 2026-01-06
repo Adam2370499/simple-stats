@@ -147,7 +147,8 @@ export default function Dashboard() {
           <div className="flex gap-3">
              <button
                 onClick={() => {
-                  const script = `<script src="http://localhost:3000/tracker.js" data-website-id="${selectedWebsiteId}" async></script>`;
+                  // Uses the actual current website URL (whether localhost or vercel)
+const script = `<script src="${window.location.origin}/tracker.js" data-website-id="${selectedWebsiteId}" async></script>`;
                   navigator.clipboard.writeText(script);
                   alert(`Script for ${websites.find(w => w.id === selectedWebsiteId)?.domain} copied!`);
                 }}
