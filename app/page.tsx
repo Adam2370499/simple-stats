@@ -61,24 +61,29 @@ export default function Dashboard() {
     initDashboard();
   }, []);
 
-  // Fetch Data when Website Changes
-  useEffect(() => {
-    if (!selectedWebsiteId) return;
+// Fetch Data when Website Changes
+useEffect(() => {
+  if (!selectedWebsiteId) return;
 
-    const fetchStats = async () => {
-        try {
-            const response = await fetch(`/api/dashboard?website_id=${selectedWebsiteId}`);
-            if (response.ok) {
-                const jsonData = await response.json();
-                setData(jsonData);
-            }
-        } catch (err) {
-            console.error(err);
-        }
-    };
+  const fetchStats = async () => {
+      try {
+          // 1. Detect User's Timezone (e.g., "Asia/Singapore")
+          const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          
+          // 2. Send it to the API
+          const response = await fetch(`/api/dashboard?website_id=${selectedWebsiteId}&timezone=${userTimezone}`);
+          
+          if (response.ok) {
+              const jsonData = await response.json();
+              setData(jsonData);
+          }
+      } catch (err) {
+          console.error(err);
+      }
+  };
 
-    fetchStats();
-  }, [selectedWebsiteId]);
+  fetchStats();
+}, [selectedWebsiteId]);
 
   if (loading) {
     return (
