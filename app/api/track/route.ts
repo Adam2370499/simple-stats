@@ -1,56 +1,58 @@
+import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { NextRequest, NextResponse } from 'next/server';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// Setup Supabase (Use specific keys for the API route)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // Must use Service Role to bypass RLS
+);
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
+// 1. Handle "OPTIONS" request (The Browser's "Knock Knock" check)
+export async function OPTIONS() {
+  return NextResponse.json({}, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, x-website-id',
+    },
+  });
+}
 
-export async function POST(request: NextRequest) {
+// 2. Handle "POST" request (The actual data)
+export async function POST(request: Request) {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, x-website-id',
+  };
+
   try {
     const body = await request.json();
-    const { url, referrer, device, website_id } = body;
+    const { website_id, url, referrer, device, user_agent } = body;
 
-    if (!url || !website_id) {
-      return NextResponse.json(
-        { error: 'Missing required fields: url and website_id' },
-        { status: 400 }
-      );
+    // Validate
+    if (!website_id || !url) {
+      return NextResponse.json({ error: 'Missing data' }, { status: 400, headers });
     }
 
-    // Extract path from full URL
-    const urlPath = new URL(url).pathname;
-
-    // Insert into page_views table
+    // Insert into Supabase
     const { error } = await supabase.from('page_views').insert({
       website_id,
-      url_path: urlPath,
-      referrer: referrer || null,
-      device_type: device || null,
-      browser: null, // Can be extracted from User-Agent header if needed
-      country: null, // Can be extracted from request headers if needed
+      url_path: url,
+      referrer: referrer || 'Direct',
+      device_type: device || 'Desktop',
+      user_agent: user_agent,
     });
 
     if (error) {
-      console.error('Error inserting page view:', error);
-      return NextResponse.json(
-        { error: 'Failed to track page view' },
-        { status: 500 }
-      );
+      console.error('Supabase Error:', error);
+      return NextResponse.json({ error: 'Database error' }, { status: 500, headers });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers });
+
   } catch (error) {
-    console.error('Error in track route:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Track Error:', error);
+    return NextResponse.json({ error: 'Server error' }, { status: 500, headers });
   }
 }
-
