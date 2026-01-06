@@ -1,60 +1,34 @@
 (function() {
-  'use strict';
+  // 1. Get the current script element to read the ID
+  const script = document.currentScript;
+  const websiteId = script.getAttribute('data-website-id');
 
-  // Find the script tag that loaded this script
-  const scripts = document.getElementsByTagName('script');
-  let scriptTag = null;
-  const currentScript = document.currentScript;
-
-  if (currentScript) {
-    scriptTag = currentScript;
-  } else {
-    // Fallback: find the last script tag (likely this one)
-    scriptTag = scripts[scripts.length - 1];
-  }
-
-  // Get website ID from data attribute
-  const websiteId = scriptTag?.getAttribute('data-website-id');
+  // 2. IMPORTANT: Find where this script file lives (Your Vercel App)
+  // This extracts "https://simple-stats-sandy.vercel.app" from the src
+  const trackerOrigin = new URL(script.src).origin;
 
   if (!websiteId) {
-    console.warn('SimpleStats: data-website-id attribute not found on script tag');
+    console.error('SimpleStats: Missing data-website-id attribute');
     return;
   }
 
-  // Get tracking data
-  const url = window.location.href;
-  const referrer = document.referrer || '';
+  // 3. Gather Data
+  const data = {
+    website_id: websiteId,
+    url: window.location.pathname,
+    referrer: document.referrer || 'Direct',
+    device: /Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
+    user_agent: navigator.userAgent
+  };
 
-  // Detect device type (simple detection)
-  const userAgent = navigator.userAgent.toLowerCase();
-  let device = 'desktop';
-  
-  if (/mobile|android|iphone|ipod|blackberry|iemobile|opera mini/i.test(userAgent)) {
-    device = 'mobile';
-  } else if (/tablet|ipad|playbook|silk/i.test(userAgent)) {
-    device = 'tablet';
-  }
-
-  // Get the base URL (defaults to current origin if script is on same domain)
-  // For cross-domain tracking, this would be set via data-api-url attribute
-  const apiUrl = scriptTag?.getAttribute('data-api-url') || '/api/track';
-
-  // Send tracking data
-  fetch(apiUrl, {
+  // 4. Send Data to the TRACKER ORIGIN (Not the current website)
+  // We use ${trackerOrigin}/api/track instead of just /api/track
+  fetch(`${trackerOrigin}/api/track`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      url: url,
-      referrer: referrer,
-      device: device,
-      website_id: websiteId,
-    }),
-    keepalive: true, // Ensure request completes even if page unloads
-  }).catch(function(error) {
-    // Silently fail - don't interrupt user experience
-    console.debug('SimpleStats tracking error:', error);
-  });
+    body: JSON.stringify(data),
+  })
+  .catch(err => console.error('SimpleStats Error:', err));
 })();
-
