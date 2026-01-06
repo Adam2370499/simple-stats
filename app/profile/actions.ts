@@ -29,31 +29,30 @@ export async function updateProfile(formData: FormData) {
 }
 
 export async function addWebsite(formData: FormData) {
-    const supabase = await createClient();
-    const domain = formData.get('domain') as string;
-  
-    // 1. Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-  
-    if (!user) return redirect('/login');
-  
-    // 2. Insert new website
-    const { error } = await supabase
-      .from('websites')
-      .insert({
-        domain: domain,
-        user_id: user.id
-      });
-  
-    if (error) {
-      console.error('Error adding website:', error);
-      return redirect('/profile?message=Error adding website');
-    }
-  
-    revalidatePath('/profile');
-    revalidatePath('/'); // Update dashboard too
-    return redirect('/profile?message=Website added successfully');
+  const supabase = await createClient();
+  const domain = formData.get('domain') as string;
+  const name = formData.get('name') as string; // <--- Get Name
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return redirect('/login');
+
+  const { error } = await supabase
+    .from('websites')
+    .insert({
+      domain: domain,
+      name: name, // <--- Save Name
+      user_id: user.id
+    });
+
+  if (error) {
+    console.error('Error adding website:', error);
+    return redirect('/profile?message=Error adding website');
   }
+
+  revalidatePath('/profile');
+  revalidatePath('/'); 
+  return redirect('/profile?message=Website added successfully');
+}
 
   export async function deleteWebsite(formData: FormData) {
     const supabase = await createClient();

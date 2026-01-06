@@ -17,6 +17,7 @@ interface DashboardData {
 interface Website {
     id: string;
     domain: string;
+    name: string;
 }
 
 const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
@@ -44,7 +45,7 @@ export default function Dashboard() {
         // 2. Get ALL Websites
         const { data: sites } = await supabase
           .from('websites')
-          .select('id, domain')
+          .select('id, domain, name')
           .eq('user_id', user.id)
           .order('created_at', { ascending: true });
 
@@ -133,10 +134,10 @@ export default function Dashboard() {
                     className="appearance-none bg-white border border-gray-200 text-gray-900 text-sm font-semibold rounded-lg pl-4 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer shadow-sm hover:border-gray-300 transition-colors"
                 >
                     {websites.map(site => (
-                        <option key={site.id} value={site.id}>
-                            {site.domain}
-                        </option>
-                    ))}
+    <option key={site.id} value={site.id}>
+        {site.name} ({site.domain})
+    </option>
+))}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
                     <ChevronDown className="w-4 h-4" />

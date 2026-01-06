@@ -100,19 +100,31 @@ export default async function ProfilePage({
           
           <div className="p-6">
             {/* Add Website Form */}
-            <form action={addWebsite} className="mb-8 flex gap-3 items-end">
-                <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Add New Domain</label>
-                    <input
-                        name="domain"
-                        placeholder="e.g. my-shop.com"
-                        required
-                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black/5 transition-all"
-                    />
+            <form action={addWebsite} className="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Add New Property</h3>
+                <div className="flex flex-col md:flex-row gap-3 items-end">
+                  <div className="flex-1 w-full">
+                      <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Website Name</label>
+                      <input
+                          name="name"
+                          placeholder="e.g. My Portfolio"
+                          required
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black/5 transition-all bg-white"
+                      />
+                  </div>
+                  <div className="flex-1 w-full">
+                      <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">Domain / URL</label>
+                      <input
+                          name="domain"
+                          placeholder="e.g. adam.github.io"
+                          required
+                          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black/5 transition-all bg-white"
+                      />
+                  </div>
+                  <button className="w-full md:w-auto bg-black text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors">
+                      + Add Site
+                  </button>
                 </div>
-                <button className="bg-black text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors">
-                    + Add
-                </button>
             </form>
 
             <div className="border-t border-gray-100 pt-4">
@@ -126,7 +138,10 @@ export default async function ProfilePage({
                       {/* Left: Info */}
                       <div>
                         <div className="flex items-center gap-2">
-                           <p className="font-medium text-gray-900">{site.domain}</p>
+                        <div>
+  <p className="font-medium text-gray-900">{site.name}</p>
+  <p className="text-xs text-gray-500">{site.domain}</p>
+</div>
                            {/* Simple Badge - In a real app, we would check DB for >0 views */}
                            {site.page_views[0]?.count > 0 ? (
   <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded border border-green-200 flex items-center gap-1">
