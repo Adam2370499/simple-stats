@@ -30,7 +30,7 @@ export default function RootLayout({
       >
         <Navbar />
         {children}
-        <script src="/tracker.js" data-website-id="be9c90b5-75d3-48ac-97d3-262a04dd4a60" async />
+        <script src="https://simple-stats-sandy.vercel.app/tracker.js" data-website-id="8c4decac-6320-4b3a-95b2-5482cfbc22d0" async></script>
       </body>
     </html>
   );
