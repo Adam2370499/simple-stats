@@ -23,85 +23,88 @@ interface Website {
 const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
 
 export default function Dashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [userName, setUserName] = useState<string>('');
-  
-  // Multi-Site State
   const [websites, setWebsites] = useState<Website[]>([]);
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<string | null>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [userName, setUserName] = useState('User'); // Added missing state
 
+  // 1. Fetch User, Websites & Restore Selection
   useEffect(() => {
-    const initDashboard = async () => {
+    const init = async () => {
       const supabase = createClient();
-      
-      // 1. Get User
       const { data: { user } } = await supabase.auth.getUser();
       
-      if (user) {
-        const name = user.user_metadata?.display_name || user.email?.split('@')[0] || 'User';
-        setUserName(name);
+      if (!user) {
+        setIsInitializing(false);
+        return; 
+      }
 
-        // 2. Get ALL Websites
-        const { data: sites } = await supabase
-          .from('websites')
-          .select('id, domain, name')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: true });
+      // Get user's name (optional, falls back to email part)
+      if (user.email) setUserName(user.email.split('@')[0]);
 
-        if (sites && sites.length > 0) {
-          setWebsites(sites);
-          // Default to the first website
+      const { data: sites } = await supabase
+        .from('websites')
+        .select('id, domain, name')
+        .eq('user_id', user.id);
+
+      if (sites && sites.length > 0) {
+        setWebsites(sites);
+
+        // CHECK MEMORY
+        const savedId = localStorage.getItem('last_selected_website');
+        const targetSite = sites.find((s: any) => s.id === savedId);
+
+        if (targetSite) {
+          setSelectedWebsiteId(savedId);
+        } else {
           setSelectedWebsiteId(sites[0].id);
         }
       }
-      setLoading(false);
+      
+      setIsInitializing(false);
     };
 
-    initDashboard();
+    init();
   }, []);
 
-// Fetch Data when Website Changes
-useEffect(() => {
-  if (!selectedWebsiteId) return;
+  // 2. Fetch Stats
+  useEffect(() => {
+    if (!selectedWebsiteId) return;
 
-  const fetchStats = async () => {
-      try {
-          // 1. Detect User's Timezone (e.g., "Asia/Singapore")
-          const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          
-          // 2. Send it to the API
-          const response = await fetch(`/api/dashboard?website_id=${selectedWebsiteId}&timezone=${userTimezone}`);
-          
-          if (response.ok) {
-              const jsonData = await response.json();
-              setData(jsonData);
-          }
-      } catch (err) {
-          console.error(err);
-      }
-  };
+    const fetchStats = async () => {
+       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+       try {
+         const res = await fetch(`/api/dashboard?website_id=${selectedWebsiteId}&timezone=${userTimezone}`);
+         if (res.ok) {
+            const jsonData = await res.json();
+            setData(jsonData);
+         }
+       } catch (error) {
+         console.error(error);
+       }
+    };
 
-  fetchStats();
-}, [selectedWebsiteId]);
+    fetchStats();
+  }, [selectedWebsiteId]);
 
-  if (loading) {
+  // --- RENDER STATES ---
+
+  // 1. Loading State (Prevent Glitch)
+  if (isInitializing) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-600 font-medium">Loading your stats...</p>
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
       </div>
     );
   }
 
-  // Handle No Websites
+  // 2. No Websites State
   if (websites.length === 0) {
     return (
         <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
           <div className="text-center max-w-md">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome, {userName}! 👋</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome! 👋</h1>
               <p className="text-gray-600 mb-6">You don't have a website connected yet.</p>
               <a href="/profile" className="inline-block bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors">
                   + Add Your First Website
@@ -111,12 +114,23 @@ useEffect(() => {
       );
   }
 
-  if (!data) return <div className="min-h-screen bg-gray-50 p-8 flex justify-center items-center">Loading data...</div>;
+  // 3. Loading Data State
+  if (!data) {
+     return (
+      <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-600 font-medium">Loading stats...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Format charts
   const deviceChartData = (data.deviceUsage || []).map((item, index) => ({
     name: item.device_type || 'Unknown', value: item.count,
   }));
+  
   const chartData = (data.last7Days || []).map((item) => {
     const date = new Date(item.date);
     return { date: item.date, day: date.toLocaleDateString('en-US', { weekday: 'short' }), count: item.count };
@@ -133,18 +147,22 @@ useEffect(() => {
             
             {/* WEBSITE SELECTOR DROPDOWN */}
             <div className="relative inline-block">
-                <select 
-                    value={selectedWebsiteId || ''}
-                    onChange={(e) => setSelectedWebsiteId(e.target.value)}
-                    className="appearance-none bg-white border border-gray-200 text-gray-900 text-sm font-semibold rounded-lg pl-4 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer shadow-sm hover:border-gray-300 transition-colors"
+            <select 
+                value={selectedWebsiteId || ''} 
+                onChange={(e) => {
+                    const newId = e.target.value;
+                    setSelectedWebsiteId(newId);
+                    localStorage.setItem('last_selected_website', newId);
+                }}
+                className="bg-transparent font-bold text-xl focus:outline-none cursor-pointer hover:text-gray-600 transition-colors pr-8 appearance-none"
                 >
-                    {websites.map(site => (
-    <option key={site.id} value={site.id}>
-        {site.name} ({site.domain})
-    </option>
-))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                {websites.map((site) => (
+                    <option key={site.id} value={site.id}>
+                    {site.name}
+                    </option>
+                ))}
+            </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
                     <ChevronDown className="w-4 h-4" />
                 </div>
             </div>
@@ -153,10 +171,9 @@ useEffect(() => {
           <div className="flex gap-3">
              <button
                 onClick={() => {
-                  // Uses the actual current website URL (whether localhost or vercel)
-const script = `<script src="${window.location.origin}/tracker.js" data-website-id="${selectedWebsiteId}" async></script>`;
+                  const script = `<script src="${window.location.origin}/tracker.js" data-website-id="${selectedWebsiteId}" async></script>`;
                   navigator.clipboard.writeText(script);
-                  alert(`Script for ${websites.find(w => w.id === selectedWebsiteId)?.domain} copied!`);
+                  alert(`Script copied!`);
                 }}
                 className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
               >
@@ -167,7 +184,7 @@ const script = `<script src="${window.location.origin}/tracker.js" data-website-
              <button
                 onClick={async () => {
                   alert('Sending report...');
-                  await fetch(`/api/send-report?website_id=${selectedWebsiteId}`, { method: 'POST' }); // Pass ID
+                  await fetch(`/api/send-report?website_id=${selectedWebsiteId}`, { method: 'POST' });
                   alert('Check your inbox!');
                 }}
                 className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
