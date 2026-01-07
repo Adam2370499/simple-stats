@@ -24,7 +24,7 @@ export default function Footer() {
             rel="noopener noreferrer"
             className="font-bold hover:underline decoration-2 decoration-purple-500 underline-offset-2"
           >
-            Zayar
+            Zayar Htoo
           </a>
         </div>
 
